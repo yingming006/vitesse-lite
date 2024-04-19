@@ -1,46 +1,48 @@
-<script setup lang="ts" generic="T extends any, O extends any">
+<script setup lang="ts">
+import ImportReport from './importReport.vue'
+import type { Report } from '~/db'
+import { reportDexie } from '~/db'
+
 defineOptions({
   name: 'IndexPage',
 })
 
-const name = ref('')
+const showImportReport = ref(false)
+const reports = ref<Report[]>()
 
-const router = useRouter()
-function go() {
-  if (name.value)
-    router.push(`/hi/${encodeURIComponent(name.value)}`)
+function getReportList() {
+  reportDexie.report.toArray().then((res) => {
+    reports.value = res
+  })
 }
+
+function complete() {
+  showImportReport.value = false
+  getReportList()
+}
+
+onMounted(() => {
+  getReportList()
+})
 </script>
 
 <template>
-  <div>
-    <div i-carbon-campsite inline-block text-4xl />
-    <p>
-      <a rel="noreferrer" href="https://github.com/antfu/vitesse-lite" target="_blank">
-        Vitesse Lite
-      </a>
-    </p>
-    <p>
-      <em text-sm op75>Opinionated Vite Starter Template</em>
-    </p>
-
-    <div py-4 />
-
-    <TheInput
-      v-model="name"
-      placeholder="What's your name?"
-      autocomplete="false"
-      @keydown.enter="go"
-    />
-
-    <div>
-      <button
-        class="m-3 text-sm btn"
-        :disabled="!name"
-        @click="go"
-      >
-        Go
-      </button>
-    </div>
+  <div mx-auto max-w-1100px min-w-600px>
+    <el-row justify="center" :gutter="20">
+      <el-col :span="17">
+        <div min-h-36px rounded-4px bg-red-100 />
+      </el-col>
+      <el-col :span="7">
+        <div min-h-36px rounded-4px bg-red-200>
+          <el-button @click="() => showImportReport = true">
+            新增
+          </el-button>
+          <p v-for="(item, index) in reports" :key="index">
+            {{ item.name }}
+          </p>
+        </div>
+      </el-col>
+    </el-row>
   </div>
+  <ImportReport :is-show="showImportReport" @complete="complete" />
 </template>

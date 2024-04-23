@@ -1,18 +1,28 @@
 <script setup lang="ts">
 import ImportReport from './importReport.vue'
-import type { Report } from '~/db'
-import { reportDexie } from '~/db'
+import type { Exam } from '~/db'
+import { examDexie } from '~/db'
 
 defineOptions({
   name: 'IndexPage',
 })
 
 const showImportReport = ref(false)
-const reports = ref<Report[]>()
+const reports = ref<Exam[]>([])
 
 function getReportList() {
-  reportDexie.report.toArray().then((res) => {
-    reports.value = res
+  examDexie.exam.toArray().then((res) => {
+    res?.forEach((item) => {
+      const { id, name, date, subjectList, classList, examScoreList } = item
+      reports.value.push({
+        id,
+        name,
+        date,
+        subjectList: subjectList ? JSON.parse(subjectList) : null,
+        classList: classList ? JSON.parse(classList) : null,
+        examScoreList: examScoreList ? JSON.parse(examScoreList) : null,
+      })
+    })
   })
 }
 

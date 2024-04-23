@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import type { UploadInstance, UploadProps, UploadRawFile } from 'element-plus'
-import { dayjs, genFileId } from 'element-plus'
+import { genFileId } from 'element-plus'
 import { read, utils } from 'xlsx'
-import { reportDexie } from '~/db'
+import type { Exam, ExamScore } from '~/db'
+import { examDexie } from '~/db'
+import * as NP from '~/utils/NumberPrecision'
 
 defineProps({
   isShow: {
@@ -18,8 +20,8 @@ const nextStepLoading = ref(false)
 const uploadFile = ref()
 
 // 文件解析数据
-const name = ref('')
-const date = ref()
+const exam = ref<Exam>({})
+const examScoreList = ref<ExamScore[]>([])
 const headers = ref()
 const rows = ref()
 const tableHeight = ref(200)
@@ -66,15 +68,36 @@ async function importAB(ab: ArrayBuffer): Promise<void> {
       return obj
     }, {})
   })
+
   console.log(rows.value, 'rows')
+
+  exam.value.subjectList = sheetJson[0].slice(3)
+  exam.value.classList = Array.from(new Set(sheetJson.slice(1).map(row => row[0])))
+
+  sheetJson.slice(1).forEach((row) => {
+    const [className, studentNo, studentName, ...scores] = row
+    scores.forEach((score: string, i: number) => {
+      examScoreList.value.push({
+        studentNo,
+        studentName,
+        className,
+        subjectName: exam.value.subjectList?.[i] || '',
+        score: NP.round(score),
+      })
+    })
+  })
+
+  console.log(exam.value.subjectList, 'subjectList')
+  console.log(exam.value.classList, 'classList')
+  console.log(examScoreList.value, 'examScoreList')
 }
 
 function nextStep1() {
   const lastIndex = uploadFile.value.name.lastIndexOf('.')
   if (lastIndex !== -1)
-    name.value = uploadFile.value.name.substring(0, lastIndex)
+    exam.value.name = uploadFile.value.name.substring(0, lastIndex)
 
-  date.value = dayjs().format('YYYY-MM-DD')
+  exam.value.date = Date.now()
   activeStep.value = ++activeStep.value
 }
 
@@ -83,18 +106,16 @@ function backStep1() {
 }
 
 function complete() {
-  reportDexie.report
-    .put({
-      name: name.value,
-      date: date.value,
-      headers: JSON.stringify(headers.value),
-      rows: JSON.stringify(rows.value),
-      deleted: 0,
-    })
-    .then(() => {
-      reset()
-      emit('complete')
-    })
+  examDexie.exam.put({
+    name: exam.value.name,
+    date: exam.value.date,
+    subjectList: JSON.stringify(exam.value.subjectList),
+    classList: JSON.stringify(exam.value.classList),
+    examScoreList: JSON.stringify(examScoreList.value),
+  }).then(() => {
+    reset()
+    emit('complete')
+  })
 }
 
 function reset() {
@@ -102,6 +123,8 @@ function reset() {
   uploadFile.value = undefined
   headers.value = []
   rows.value = []
+  exam.value = {}
+  examScoreList.value = []
 }
 
 onMounted(() => {

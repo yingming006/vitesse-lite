@@ -6,6 +6,9 @@ body,
   padding: 0;
 }
 
+html {
+  background: #f1f2f6;
+}
 html.dark {
   background: #121212;
 }
